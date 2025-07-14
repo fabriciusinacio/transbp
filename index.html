@@ -1,0 +1,151 @@
+<!-- ... tudo igual até o final do <script> -->
+
+<script>
+  const formEntrada = document.getElementById('formEntrada');
+  const formDespesa = document.getElementById('formDespesa');
+  const tabelaEntradas = document.querySelector('#tabelaEntradas tbody');
+  const tabelaDespesas = document.querySelector('#tabelaDespesas tbody');
+  const resumo = document.getElementById('resumo');
+
+  let entradas = JSON.parse(localStorage.getItem('entradas')) || [];
+  let despesas = JSON.parse(localStorage.getItem('despesas')) || [];
+
+  function salvar() {
+    localStorage.setItem('entradas', JSON.stringify(entradas));
+    localStorage.setItem('despesas', JSON.stringify(despesas));
+  }
+
+  function atualizarTabelas() {
+    renderizarTabelas(entradas, despesas);
+  }
+
+  function renderizarTabelas(ent, desp) {
+    tabelaEntradas.innerHTML = '';
+    tabelaDespesas.innerHTML = '';
+
+    let totalEnt = 0;
+    ent.forEach((e, i) => {
+      totalEnt += e.valor;
+      tabelaEntradas.innerHTML += `
+        <tr class="verde">
+          <td>${e.data}</td><td>${e.origem}</td><td>${e.destino}</td>
+          <td>${e.distancia}</td><td>R$ ${e.valor.toFixed(2)}</td><td>${e.empresa}</td>
+          <td><button class="btn-remover" onclick="removerEntrada(${i})">X</button></td>
+        </tr>`;
+    });
+
+    let totalDesp = 0;
+    desp.forEach((d, i) => {
+      totalDesp += d.valor;
+      tabelaDespesas.innerHTML += `
+        <tr class="vermelho">
+          <td>${d.data}</td><td>${d.tipo}</td>
+          <td>R$ ${d.valor.toFixed(2)}</td><td>${d.obs}</td>
+          <td><button class="btn-remover" onclick="removerDespesa(${i})">X</button></td>
+        </tr>`;
+    });
+
+    resumo.textContent = `Saldo no Período: R$ ${(totalEnt - totalDesp).toFixed(2)}`;
+  }
+
+  function removerEntrada(index) {
+    entradas.splice(index, 1);
+    salvar();
+    atualizarTabelas();
+  }
+
+  function removerDespesa(index) {
+    despesas.splice(index, 1);
+    salvar();
+    atualizarTabelas();
+  }
+
+  formEntrada.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const novaEntrada = {
+      data: document.getElementById('entradaData').value,
+      origem: document.getElementById('origem').value,
+      destino: document.getElementById('destino').value,
+      distancia: parseFloat(document.getElementById('distancia').value),
+      valor: parseFloat(document.getElementById('valorEntrada').value),
+      empresa: document.getElementById('empresa').value
+    };
+    entradas.push(novaEntrada);
+    salvar();
+    atualizarTabelas();
+    formEntrada.reset();
+    preencherDatasHoje(); // repõe a data de hoje no campo
+  });
+
+  formDespesa.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const novaDespesa = {
+      data: document.getElementById('despesaData').value,
+      tipo: document.getElementById('tipoDespesa').value,
+      valor: parseFloat(document.getElementById('valorDespesa').value),
+      obs: document.getElementById('obsDespesa').value
+    };
+    despesas.push(novaDespesa);
+    salvar();
+    atualizarTabelas();
+    formDespesa.reset();
+    preencherDatasHoje(); // repõe a data de hoje no campo
+  });
+
+  document.getElementById('tipoFiltro').addEventListener('change', () => {
+    const tipo = document.getElementById('tipoFiltro').value;
+    const filtros = document.getElementById('filtros');
+    filtros.innerHTML = '';
+
+    if (tipo === 'dia') {
+      filtros.innerHTML = `<input type="date" id="filtroData" />`;
+    } else if (tipo === 'semana') {
+      filtros.innerHTML = `
+        <label>Início: <input type="date" id="filtroInicio" /></label><br/>
+        <label>Fim: <input type="date" id="filtroFim" /></label>
+      `;
+    } else if (tipo === 'mes') {
+      filtros.innerHTML = `<input type="month" id="filtroMes" />`;
+    }
+  });
+
+  document.getElementById('formFiltro').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const tipo = document.getElementById('tipoFiltro').value;
+    filtrarDados(tipo);
+  });
+
+  function filtrarDados(tipo) {
+    let entradasFiltradas = [];
+    let despesasFiltradas = [];
+
+    if (tipo === "dia") {
+      const dia = document.getElementById('filtroData').value;
+      entradasFiltradas = entradas.filter(e => e.data === dia);
+      despesasFiltradas = despesas.filter(d => d.data === dia);
+
+    } else if (tipo === "semana") {
+      const inicio = document.getElementById('filtroInicio').value;
+      const fim = document.getElementById('filtroFim').value;
+      entradasFiltradas = entradas.filter(e => e.data >= inicio && e.data <= fim);
+      despesasFiltradas = despesas.filter(d => d.data >= inicio && d.data <= fim);
+
+    } else if (tipo === "mes") {
+      const mes = document.getElementById('filtroMes').value;
+      entradasFiltradas = entradas.filter(e => e.data.slice(0,7) === mes);
+      despesasFiltradas = despesas.filter(d => d.data.slice(0,7) === mes);
+    }
+
+    renderizarTabelas(entradasFiltradas, despesasFiltradas);
+  }
+
+  // ✅ Define a data de hoje nos inputs de data
+  function preencherDatasHoje() {
+    const hoje = new Date().toISOString().split("T")[0];
+    document.getElementById("entradaData").value = hoje;
+    document.getElementById("despesaData").value = hoje;
+  }
+
+  preencherDatasHoje();
+  atualizarTabelas();
+</script>
